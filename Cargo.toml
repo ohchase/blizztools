@@ -1,0 +1,20 @@
+[package]
+name = "blizztools"
+description = "cli toolset for interacting with blizzard cdn"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.79"
+binrw = "0.13.3"
+clap = { version = "4.4.18", features = ["derive"] }
+flate2 = { version = "1.0.28", features = ["zlib"] }
+hex = "0.4.3"
+reqwest = "0.11.23"
+thiserror = "1.0.56"
+tokio = { version = "1.35.1", features = ["full"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
