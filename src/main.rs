@@ -17,6 +17,7 @@ enum Product {
     WowRetail,
     WowClassic,
     WowClassicEra,
+    WowClassicBeta,
 }
 
 impl Product {
@@ -26,6 +27,7 @@ impl Product {
             Product::WowRetail => "wow",
             Product::WowClassic => "wow_classic",
             Product::WowClassicEra => "wow_classic_era",
+            Product::WowClassicBeta => "wow_classic_beta",
         }
     }
 }
