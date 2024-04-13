@@ -12,6 +12,7 @@ use blizztools::{
 };
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+#[allow(clippy::enum_variant_names)]
 #[derive(ValueEnum, Debug, Clone, Copy, Eq, PartialEq)]
 enum Product {
     WowRetail,
@@ -46,8 +47,16 @@ enum Commands {
     Version(VersionArgs),
     /// Cdn command to query tact for cdns available for a product
     Cdn(CdnArgs),
+    /// Command that will download the encoding and install manifest for a product
+    InstallManifest(ManifestArgs),
     /// Command that will download a selected file from a version's install
     Download(DownloadArgs),
+}
+
+/// Get available versions for product
+#[derive(Debug, Args)]
+struct ManifestArgs {
+    product: Product,
 }
 
 /// Get available versions for product
@@ -64,7 +73,10 @@ struct CdnArgs {
 
 #[derive(Debug, Args)]
 struct DownloadArgs {
+    /// The product you want to download
     product: Product,
+    /// The content key of the file you want to download
+    c_key: Md5Hash,
     /// Destination folder for downloads
     output: std::path::PathBuf,
 }
@@ -77,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Version(args) => versions_command(args).await?,
         Commands::Cdn(args) => cdn_command(args).await?,
+        Commands::InstallManifest(args) => install_manifest_command(args).await?,
         Commands::Download(args) => download_command(args).await?,
     }
     Ok(())
@@ -107,6 +120,56 @@ async fn versions_command(args: VersionArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
+    let url = format!(
+        "http://us.patch.battle.net:1119/{}",
+        &args.product.cdn_path()
+    );
+    let cdn_bytes = reqwest::get(format!("{url}/cdns")).await?.text().await?;
+    let cdn_table = parse_cdn_table(&cdn_bytes)?;
+    tracing::debug!("{cdn_table:#?}");
+
+    let version_bytes = reqwest::get(format!("{url}/versions"))
+        .await?
+        .text()
+        .await?;
+    let version_table = parse_version_table(&version_bytes)?;
+    tracing::debug!("{version_table:#?}");
+
+    let cdn_definition = cdn_table
+        .into_iter()
+        .next()
+        .ok_or(anyhow::anyhow!("atleast one cdn entry"))?;
+    let selected_server = cdn_definition
+        .servers
+        .first()
+        .ok_or(anyhow::anyhow!("atleast one server entry"))?;
+    let version_definition = version_table
+        .into_iter()
+        .next()
+        .ok_or(anyhow::anyhow!("atleast one version entry"))?;
+
+    tracing::info!("latest version: {}", &version_definition.version_name);
+    let selected_cdn = format!("{}/{}", selected_server, cdn_definition.path);
+    tracing::info!("selected cdn: {selected_cdn}");
+
+    let build_config_hash = version_definition.build_config;
+    let build_config = download_config(&selected_cdn, &build_config_hash).await?;
+    let build_config = parse_build_config(&build_config)?;
+    tracing::debug!("{build_config:#?}");
+
+    let install_config_hash = build_config.install.1;
+    let table_data = download_by_ekey(&selected_cdn, &install_config_hash).await?;
+    let install_manifest = InstallManifest::read(&mut Cursor::new(table_data))?;
+
+    install_manifest
+        .entries
+        .iter()
+        .filter(|n| !n.name.is_empty())
+        .for_each(|entry| tracing::info!("Name: {} , CKey: {:?}", entry.name, entry.hash));
+    Ok(())
+}
+
 async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
     let url = format!(
         "http://us.patch.battle.net:1119/{}",
@@ -129,7 +192,7 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
         .ok_or(anyhow::anyhow!("atleast one cdn entry"))?;
     let selected_server = cdn_definition
         .servers
-        .get(0)
+        .first()
         .ok_or(anyhow::anyhow!("atleast one server entry"))?;
     let version_definition = version_table
         .into_iter()
@@ -139,7 +202,7 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
     tracing::info!("latest version: {}", &version_definition.version_name);
     let output_dir = args
         .output
-        .join(&args.product.cdn_path())
+        .join(args.product.cdn_path())
         .join(&version_definition.version_name);
 
     tracing::info!("output dir: {output_dir:?}");
@@ -158,28 +221,17 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
     let table_data = download_by_ekey(&selected_cdn, &encoding_config_hash).await?;
     let encoding_table: EncodingManifest = EncodingManifest::read(&mut Cursor::new(table_data))?;
 
-    let install_config_hash = build_config.install.1;
-    let table_data = download_by_ekey(&selected_cdn, &install_config_hash).await?;
-    let install_manifest = InstallManifest::read(&mut Cursor::new(table_data))?;
+    tracing::info!("beginning download of content key: {:?}", args.c_key);
+    let data = download_by_ckey(&selected_cdn, &args.c_key, &encoding_table).await?;
+    tracing::info!(
+        "successfully downloaded content key: {:?} with size: {}",
+        &args.c_key,
+        data.len()
+    );
 
-    for entry in install_manifest
-        .entries
-        .iter()
-        .filter(|e| e.name.ends_with(b".exe") && e.name.starts_with(b"Wow"))
-    {
-        tracing::info!("beginning download of {}", entry.name);
-        let data = download_by_ckey(&selected_cdn, &entry.hash, &encoding_table).await?;
-        tracing::info!(
-            "successfully downloaded {} size: {}",
-            entry.name,
-            data.len()
-        );
-
-        let path = output_dir.join(entry.name.to_string());
-        let mut output_file = std::fs::File::create(path)?;
-        output_file.write_all(&data)?;
-    }
-    Ok(())
+    let path = output_dir.join(args.c_key.as_str());
+    let mut output_file = std::fs::File::create(path)?;
+    Ok(output_file.write_all(&data)?)
 }
 
 async fn download_config(selected_cdn: &str, e_key: &Md5Hash) -> anyhow::Result<String> {
@@ -226,7 +278,7 @@ async fn download_by_ckey(
 
     let e_key = encoding_entry
         .e_keys
-        .get(0)
+        .first()
         .ok_or(anyhow::anyhow!("has ekey"))?;
-    download_by_ekey(selected_cdn, &e_key).await
+    download_by_ekey(selected_cdn, e_key).await
 }
