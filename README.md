@@ -8,6 +8,7 @@ Supports
 - wow_retail
 - wow_classic
 - wow_classic_era
+- wow_classic_beta
 - anything else just implement the enum entry...
 
 Some keywords:
