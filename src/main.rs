@@ -12,27 +12,72 @@ use blizztools::{
 };
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+/// All available products
 #[allow(clippy::enum_variant_names)]
 #[derive(ValueEnum, Debug, Clone, Copy, Eq, PartialEq)]
 enum Product {
-    WowRetail,
+    /// Diablo 3 Retail
+    Diablo3,
+    /// Diablo 3 Test
+    Diablo3Ptr,
+    /// Diablo IV Retail, Fenris
+    Diablo4,
+    /// Diablo IV Beta , Fenris Beta
+    Diablo4Beta,
+    /// Hearthstone Retail
+    Hearthstone,
+    /// Hearthstone Chournament
+    HearthstoneTournament,
+    /// Overwatch Retail, Prometheus
+    Overwatch,
+    /// Overwatch Test, Prometheus Test
+    OverwatchTest,
+    /// Warcraft III
+    Warcraft3,
+    /// World of Warcraft Retail
+    Wow,
+    /// World of Warcraft Alpha/Beta
+    WowBeta,
+    /// World of Warcraft Classic (BCC)
     WowClassic,
-    WowClassicEra,
+    /// World of Warcraft Classic (BCC) Beta
     WowClassicBeta,
+    /// World of Warcraft Classic (BCC) Test
+    WowClassicPtr,
+    /// World of Warcraft Classic (Vanilla)
+    WowClassicEra,
+    /// World of Warcraft Classic (Vanilla) Beta
+    WowClassicEraBeta,
+    /// World of Warcraft Classic (Vanilla) Test
+    WowClassicEraPtr,
 }
 
 impl Product {
     /// url safe path for this product
     fn cdn_path(&self) -> &'static str {
         match self {
-            Product::WowRetail => "wow",
+            Product::Warcraft3 => "w3",
+            Product::Wow => "wow",
+            Product::WowBeta => "wow_beta",
             Product::WowClassic => "wow_classic",
-            Product::WowClassicEra => "wow_classic_era",
             Product::WowClassicBeta => "wow_classic_beta",
+            Product::WowClassicPtr => "wow_classic_ptr",
+            Product::WowClassicEra => "wow_classic_era",
+            Product::WowClassicEraBeta => "wow_classic_era_beta",
+            Product::WowClassicEraPtr => "wow_classic_era_ptr",
+            Product::Diablo3 => "d3",
+            Product::Diablo3Ptr => "d3t",
+            Product::Diablo4 => "fenris",
+            Product::Diablo4Beta => "fenrisb",
+            Product::Hearthstone => "hsb",
+            Product::HearthstoneTournament => "hsc",
+            Product::Overwatch => "pro",
+            Product::OverwatchTest => "prot",
         }
     }
 }
 
+/// Parent cli command orchestrator
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -41,6 +86,7 @@ struct Cli {
     command: Commands,
 }
 
+/// Available cli commands
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Versions command to query tact for a product version
@@ -71,12 +117,13 @@ struct CdnArgs {
     product: Product,
 }
 
+/// Arguments for cli command to download by content key
 #[derive(Debug, Args)]
 struct DownloadArgs {
     /// The product you want to download
     product: Product,
     /// The content key of the file you want to download
-    c_key: Md5Hash,
+    content_key: Md5Hash,
     /// Destination folder for downloads
     output: std::path::PathBuf,
 }
@@ -103,7 +150,7 @@ async fn cdn_command(args: CdnArgs) -> anyhow::Result<()> {
     );
     let cdn_bytes = reqwest::get(url).await?.text().await?;
     let cdn_table = parse_cdn_table(&cdn_bytes)?;
-    tracing::info!("{cdn_table:#?}");
+    println!("{cdn_table:#?}");
     Ok(())
 }
 
@@ -116,7 +163,7 @@ async fn versions_command(args: VersionArgs) -> anyhow::Result<()> {
 
     let version_bytes = reqwest::get(url).await?.text().await?;
     let version_table = parse_version_table(&version_bytes)?;
-    tracing::info!("{version_table:#?}");
+    println!("{version_table:#?}");
     Ok(())
 }
 
@@ -149,9 +196,9 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
         .next()
         .ok_or(anyhow::anyhow!("atleast one version entry"))?;
 
-    tracing::info!("latest version: {}", &version_definition.version_name);
+    tracing::debug!("latest version: {}", &version_definition.version_name);
     let selected_cdn = format!("{}/{}", selected_server, cdn_definition.path);
-    tracing::info!("selected cdn: {selected_cdn}");
+    tracing::debug!("selected cdn: {selected_cdn}");
 
     let build_config_hash = version_definition.build_config;
     let build_config = download_config(&selected_cdn, &build_config_hash).await?;
@@ -166,7 +213,7 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
         .entries
         .iter()
         .filter(|n| !n.name.is_empty())
-        .for_each(|entry| tracing::info!("Name: {} , CKey: {:?}", entry.name, entry.hash));
+        .for_each(|entry| println!("Name: {} , CKey: {:?}", entry.name, entry.hash));
     Ok(())
 }
 
@@ -199,18 +246,18 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
         .next()
         .ok_or(anyhow::anyhow!("atleast one version entry"))?;
 
-    tracing::info!("latest version: {}", &version_definition.version_name);
+    tracing::debug!("latest version: {}", &version_definition.version_name);
     let output_dir = args
         .output
         .join(args.product.cdn_path())
         .join(&version_definition.version_name);
 
-    tracing::info!("output dir: {output_dir:?}");
+    tracing::debug!("output dir: {output_dir:?}");
     if !Path::new(&output_dir).exists() {
         std::fs::create_dir_all(&output_dir)?;
     }
     let selected_cdn = format!("{}/{}", selected_server, cdn_definition.path);
-    tracing::info!("selected cdn: {selected_cdn}");
+    tracing::debug!("selected cdn: {selected_cdn}");
 
     let build_config_hash = version_definition.build_config;
     let build_config = download_config(&selected_cdn, &build_config_hash).await?;
@@ -221,15 +268,15 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
     let table_data = download_by_ekey(&selected_cdn, &encoding_config_hash).await?;
     let encoding_table: EncodingManifest = EncodingManifest::read(&mut Cursor::new(table_data))?;
 
-    tracing::info!("beginning download of content key: {:?}", args.c_key);
-    let data = download_by_ckey(&selected_cdn, &args.c_key, &encoding_table).await?;
-    tracing::info!(
+    tracing::debug!("beginning download of content key: {:?}", args.content_key);
+    let data = download_by_ckey(&selected_cdn, &args.content_key, &encoding_table).await?;
+    tracing::debug!(
         "successfully downloaded content key: {:?} with size: {}",
-        &args.c_key,
+        &args.content_key,
         data.len()
     );
 
-    let path = output_dir.join(args.c_key.as_str());
+    let path = output_dir.join(args.content_key.as_str());
     let mut output_file = std::fs::File::create(path)?;
     Ok(output_file.write_all(&data)?)
 }

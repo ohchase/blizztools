@@ -5,11 +5,35 @@ Allows you to interact with blizzard cdn through cli.
 Useful for ci/cd workflows dependent on client binaries.
 
 Supports
-- wow_retail
-- wow_classic
-- wow_classic_era
-- wow_classic_beta
-- anything else just implement the enum entry...
+```
+❯ cargo run version --help 
+    Finished dev [unoptimized + debuginfo] target(s) in 0.13s
+     Running `target\debug\blizztools.exe version --help`
+Versions command to query tact for a product version
+
+Usage: blizztools.exe version <PRODUCT>
+
+Arguments:
+  <PRODUCT>
+          Possible values:
+          - diablo3:                Diablo 3 Retail
+          - diablo3-ptr:            Diablo 3 Test
+          - diablo4:                Diablo IV Retail, Fenris
+          - diablo4-beta:           Diablo IV Beta , Fenris Beta
+          - hearthstone:            Hearthstone Retail
+          - hearthstone-tournament: Hearthstone Chournament
+          - overwatch:              Overwatch Retail, Prometheus
+          - overwatch-test:         Overwatch Test, Prometheus Test
+          - warcraft3:              Warcraft III
+          - wow:                    World of Warcraft Retail
+          - wow-beta:               World of Warcraft Alpha/Beta
+          - wow-classic:            World of Warcraft Classic (BCC)
+          - wow-classic-beta:       World of Warcraft Classic (BCC) Beta
+          - wow-classic-ptr:        World of Warcraft Classic (BCC) Test
+          - wow-classic-era:        World of Warcraft Classic (Vanilla)
+          - wow-classic-era-beta:   World of Warcraft Classic (Vanilla) Beta
+          - wow-classic-era-ptr:    World of Warcraft Classic (Vanilla) Test
+```
 
 Some keywords:
 TACT, CDN, BLTE, Install Manifest, Download Manifest, CE Table, EncodingKey, ContentKey
@@ -109,6 +133,9 @@ the binaries will be downloaded into your target output directory under {product
 │   └── 3.4.3.53788
 │       ├── 3bdf94e861f99559347cc9c576f0e236
 │       └── c_key_0000001
+├── fenris
+│   └── 1.3.5.52293
+│       ├── 457a5b5cb0f86c5ff45fee9addbc6c4c
 └── wow_classic_era
     └── 1.15.0.52610
         ├── c_key_0000000
