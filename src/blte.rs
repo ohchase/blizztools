@@ -20,7 +20,8 @@ fn chunk_data_parser(chunk_info_entries: &[ChunkInfoEntry]) -> BinResult<Vec<Dat
 pub struct BlockTable {
     pub header_size: u32,
     pub chunk_info: ChunkInfo,
-    #[br(count = chunk_info.chunk_count)]
+
+    #[br(count = usize::from(chunk_info.chunk_count))]
     pub chunk_info_entries: Vec<ChunkInfoEntry>,
     #[br(parse_with = chunk_data_parser, args (&chunk_info_entries,))]
     pub chunk_data: Vec<DataChunk>,

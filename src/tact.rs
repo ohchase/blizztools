@@ -35,7 +35,7 @@ pub fn parse_version_table(data: &str) -> Result<Vec<VersionDefinition>, ParserE
     let _sequence_line = next_or_exhaust(&mut resp_lines)?;
     resp_lines
         .filter(|l| !l.is_empty())
-        .map(|l| parse_version_table_entry(&l))
+        .map(parse_version_table_entry)
         .collect::<Result<Vec<VersionDefinition>, _>>()
 }
 
@@ -45,9 +45,8 @@ pub fn parse_cdn_table(data: &str) -> Result<Vec<CdnDefinition>, ParserError> {
     let _format_line = next_or_exhaust(&mut resp_lines)?;
     let _sequence_line = next_or_exhaust(&mut resp_lines)?;
     resp_lines
-        .into_iter()
         .filter(|l| !l.is_empty())
-        .map(|l| parse_cdn_table_entry(&l))
+        .map(parse_cdn_table_entry)
         .collect::<Result<Vec<CdnDefinition>, _>>()
 }
 
@@ -57,18 +56,10 @@ fn parse_cdn_table_entry(line: &str) -> Result<CdnDefinition, ParserError> {
     let name = next_or_exhaust(&mut splits)?;
     let path = next_or_exhaust(&mut splits)?;
     let servers = next_or_exhaust(&mut splits)?;
-    let servers: Vec<String> = servers
-        .split_whitespace()
-        .into_iter()
-        .map(|s| s.to_owned())
-        .collect();
+    let servers: Vec<String> = servers.split_whitespace().map(|s| s.to_owned()).collect();
 
     let hosts = next_or_exhaust(&mut splits)?;
-    let hosts: Vec<String> = hosts
-        .split_whitespace()
-        .into_iter()
-        .map(|s| s.to_owned())
-        .collect();
+    let hosts: Vec<String> = hosts.split_whitespace().map(|s| s.to_owned()).collect();
     let config_path = next_or_exhaust(&mut splits)?;
 
     Ok(CdnDefinition {

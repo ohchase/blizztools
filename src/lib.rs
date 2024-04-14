@@ -21,7 +21,7 @@ impl std::fmt::Debug for Md5Hash {
     }
 }
 
-#[derive(BinRead, PartialEq, Eq)]
+#[derive(BinRead, PartialEq, Eq, Clone)]
 pub struct Md5Hash(pub [u8; 16]);
 
 impl Md5Hash {
@@ -57,7 +57,7 @@ pub struct InstallManifest {
     pub encoding_hash_size: u8,
     pub num_tags: u16,
     pub num_entries: u32,
-    #[br(count = num_tags, args { inner: (num_entries / 8,) })]
+    #[br(count = usize::from(num_tags), args { inner: (num_entries / 8,) })]
     pub tags: Vec<ManifestTag>,
     #[br(count = num_entries)]
     pub entries: Vec<InstallManifestEntry>,
@@ -80,7 +80,7 @@ pub struct DownloadManifest {
     pub num_tags: u16,
     #[br(count = num_entries)]
     pub entries: Vec<DownloadManifestEntry>,
-    #[br(count = num_tags, args { inner: (num_entries / 8,) })]
+    #[br(count = usize::from(num_tags), args { inner: (num_entries / 8,) })]
     pub tags: Vec<ManifestTag>,
 }
 
@@ -118,15 +118,8 @@ fn key_table_data_parser(page_size_kb: u16, num_pages: u32) -> BinResult<Vec<CeK
         }
 
         let mut cursor = binrw::io::Cursor::new(page);
-        loop {
-            match cursor.read_be::<CeKeyPageEntry>() {
-                Ok(entry) => {
-                    results.push(entry);
-                }
-                Err(_e) => {
-                    break;
-                }
-            }
+        while let Ok(entry) = cursor.read_be::<CeKeyPageEntry>() {
+            results.push(entry);
         }
 
         page_count += 1;
@@ -170,7 +163,7 @@ pub struct CeKeyPageEntry {
     pub key_count: u8,
     pub file_size: [u8; 5],
     pub c_key: Md5Hash,
-    #[br(count = key_count)]
+    #[br(count = usize::from(key_count))]
     pub e_keys: Vec<Md5Hash>,
 }
 
@@ -197,24 +190,20 @@ fn index_table_data_parser() -> BinResult<Vec<IndexEntry>> {
         if read_n != 4096 {
             return Ok(results);
         }
-
         let mut cursor = binrw::io::Cursor::new(page);
-        loop {
-            match cursor.read_be::<IndexEntry>() {
-                Ok(entry) => {
-                    if entry.e_key.is_null() {
-                        tracing::info!(
-                            "ending parsing index file, because we encountered a null hash"
-                        );
-                        return Ok(results);
-                    }
 
-                    results.push(entry);
-                }
-                Err(e) => {
-                    tracing::warn!("ending with an err... {e:?}");
+        match cursor.read_be::<IndexEntry>() {
+            Ok(entry) => {
+                if entry.e_key.is_null() {
+                    tracing::info!("ending parsing index file, because we encountered a null hash");
                     return Ok(results);
                 }
+
+                results.push(entry);
+            }
+            Err(e) => {
+                tracing::warn!("ending with an err... {e:?}");
+                return Ok(results);
             }
         }
     }
