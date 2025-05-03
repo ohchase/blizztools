@@ -150,7 +150,7 @@ async fn cdn_command(args: CdnArgs) -> anyhow::Result<()> {
     );
     let cdn_bytes = reqwest::get(url).await?.text().await?;
     let cdn_table = parse_cdn_table(&cdn_bytes)?;
-    println!("{cdn_table:#?}");
+    println!("{}", serde_json::to_string_pretty(&cdn_table)?);
     Ok(())
 }
 
@@ -163,7 +163,7 @@ async fn versions_command(args: VersionArgs) -> anyhow::Result<()> {
 
     let version_bytes = reqwest::get(url).await?.text().await?;
     let version_table = parse_version_table(&version_bytes)?;
-    println!("{version_table:#?}");
+    println!("{}", serde_json::to_string_pretty(&version_table)?);
     Ok(())
 }
 
@@ -209,11 +209,11 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
     let table_data = download_by_ekey(&selected_cdn, &install_config_hash).await?;
     let install_manifest = InstallManifest::read(&mut Cursor::new(table_data))?;
 
-    install_manifest
-        .entries
-        .iter()
-        .filter(|n| !n.name.is_empty())
-        .for_each(|entry| println!("Name: {} , CKey: {:?}", entry.name, entry.hash));
+    // println!(
+    //     "{}",
+    //     serde_json::to_string_pretty(&install_manifest).unwrap()
+    // );
+    println!("{:?}", install_manifest);
     Ok(())
 }
 

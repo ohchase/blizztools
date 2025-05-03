@@ -4,6 +4,7 @@ use std::fmt::Write;
 
 use binrw::BinResult;
 use binrw::{BinRead, BinReaderExt};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod blte;
@@ -21,7 +22,7 @@ impl std::fmt::Debug for Md5Hash {
     }
 }
 
-#[derive(BinRead, PartialEq, Eq, Clone)]
+#[derive(BinRead, PartialEq, Eq, Clone, Serialize)]
 pub struct Md5Hash(pub [u8; 16]);
 
 impl Md5Hash {
@@ -42,7 +43,6 @@ impl Md5Hash {
 
 impl std::str::FromStr for Md5Hash {
     type Err = Md5Error;
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut decoded = [0; 16];
         hex::decode_to_slice(s, &mut decoded).map_err(|_| Md5Error)?;

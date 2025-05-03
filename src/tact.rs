@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use serde::Serialize;
+
 use crate::{parse::ParserError, Md5Hash};
 
 fn next_or_exhaust<'a>(split: &mut impl Iterator<Item = &'a str>) -> Result<String, ParserError> {
@@ -7,7 +9,7 @@ fn next_or_exhaust<'a>(split: &mut impl Iterator<Item = &'a str>) -> Result<Stri
     Ok(next.to_owned())
 }
 /// Product configurations available
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct VersionDefinition {
     pub region: String,
     pub build_config: Md5Hash,
@@ -19,7 +21,7 @@ pub struct VersionDefinition {
 }
 
 /// Defines cdn servers available
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CdnDefinition {
     pub name: String,
     pub path: String,

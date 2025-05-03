@@ -1,9 +1,11 @@
+use serde::Serialize;
+
 use crate::{
     parse::{parse_named_attribute, parse_named_attribute_pair, ParserError},
     Md5Hash,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct BuildConfig {
     pub root: Md5Hash,
     pub install: (Md5Hash, Md5Hash),
