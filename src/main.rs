@@ -209,11 +209,10 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
     let table_data = download_by_ekey(&selected_cdn, &install_config_hash).await?;
     let install_manifest = InstallManifest::read(&mut Cursor::new(table_data))?;
 
-    // println!(
-    //     "{}",
-    //     serde_json::to_string_pretty(&install_manifest).unwrap()
-    // );
-    println!("{:?}", install_manifest);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&install_manifest).unwrap()
+    );
     Ok(())
 }
 
@@ -247,10 +246,7 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
         .ok_or(anyhow::anyhow!("atleast one version entry"))?;
 
     tracing::debug!("latest version: {}", &version_definition.version_name);
-    let output_dir = args
-        .output
-        .join(args.product.cdn_path())
-        .join(&version_definition.version_name);
+    let output_dir = args.output;
 
     tracing::debug!("output dir: {output_dir:?}");
     if !Path::new(&output_dir).exists() {

@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 
 use binrw::BinResult;
 use binrw::{BinRead, BinReaderExt};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize, Serializer};
+use serde_hex::{SerHex, StrictPfx};
 use thiserror::Error;
 
 pub mod blte;
@@ -23,7 +24,7 @@ impl std::fmt::Debug for Md5Hash {
 }
 
 #[derive(BinRead, PartialEq, Eq, Clone, Serialize)]
-pub struct Md5Hash(pub [u8; 16]);
+pub struct Md5Hash(#[serde(with = "SerHex::<StrictPfx>")] pub [u8; 16]);
 
 impl Md5Hash {
     /// Whether the MD5 Hash is all zeroes
@@ -50,7 +51,7 @@ impl std::str::FromStr for Md5Hash {
     }
 }
 
-#[derive(Debug, BinRead)]
+#[derive(Debug, BinRead, Serialize)]
 #[br(big, magic = b"IN")]
 pub struct InstallManifest {
     pub version: u8,
@@ -63,8 +64,35 @@ pub struct InstallManifest {
     pub entries: Vec<InstallManifestEntry>,
 }
 
-#[derive(Debug, BinRead)]
+fn serialize_invalid_utf8<S>(bytes: &binrw::NullString, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    SerializeNullStr(bytes).serialize(serializer)
+}
+
+struct SerializeNullStr<'a>(&'a binrw::NullString);
+
+impl Display for SerializeNullStr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let SerializeNullStr(value) = self;
+        let string_rep = String::from_utf8(value.0.clone()).unwrap();
+        f.write_str(&string_rep)
+    }
+}
+
+impl Serialize for SerializeNullStr<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self.0)
+    }
+}
+
+#[derive(Debug, BinRead, Serialize)]
 pub struct InstallManifestEntry {
+    #[serde(serialize_with = "serialize_invalid_utf8")]
     pub name: binrw::NullString,
     pub hash: Md5Hash,
     pub size: u32,
@@ -91,9 +119,10 @@ pub struct DownloadManifestEntry {
     pub priority: u8,
 }
 
-#[derive(Debug, BinRead)]
+#[derive(Debug, BinRead, Serialize)]
 #[br(import(mask_len: u32))]
 pub struct ManifestTag {
+    #[serde(serialize_with = "serialize_invalid_utf8")]
     pub name: binrw::NullString,
     pub tag_type: u16,
     #[br(count = mask_len)]
@@ -143,6 +172,7 @@ pub struct EncodingManifest {
     pub e_key_table_count: u32,
 
     _unknown: u8,
+
     pub espec_block_size: u32,
     #[br(count = espec_block_size)]
     pub espec_block: Vec<u8>,
