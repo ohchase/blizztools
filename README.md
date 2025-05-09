@@ -1,10 +1,23 @@
 # blizztools
 
+>[!NOTE]
+> The CDN is Blizzard's property, I have no association.
+> Be respectful to their property when using this application and do not abuse
+
+>[!WARNING]
+> The application currently redownload's the install and encoding manifest for every individual download. This is very inefficient, please do not download many files through cli to be respectful to blizzard's cdn; just target the client binary for instance if that achieves your use case.
+> Pull requests open if anybody wants to cache the install and encoding manifest.
+
 Allows you to interact with blizzard cdn through cli.
 
 Useful for ci/cd workflows dependent on client binaries.
 
-Supports
+WowDev wiki was used as the primary resource to develop this https://wowdev.wiki/TACT
+
+Some keywords:
+TACT, CDN, BLTE, Install Manifest, Download Manifest, CE Table, EncodingKey, ContentKey
+
+## supported products
 ```
 ❯ cargo run version --help 
     Finished dev [unoptimized + debuginfo] target(s) in 0.13s
@@ -34,9 +47,6 @@ Arguments:
           - wow-classic-era-beta:   World of Warcraft Classic (Vanilla) Beta
           - wow-classic-era-ptr:    World of Warcraft Classic (Vanilla) Test
 ```
-
-Some keywords:
-TACT, CDN, BLTE, Install Manifest, Download Manifest, CE Table, EncodingKey, ContentKey
 
 ## help
 ```console
