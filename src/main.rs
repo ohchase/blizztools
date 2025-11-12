@@ -189,7 +189,9 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
         .ok_or(anyhow::anyhow!("atleast one cdn entry"))?;
     let selected_server = cdn_definition
         .servers
-        .first()
+        .into_iter()
+        .filter(|server| server.contains(".cdn"))
+        .next()
         .ok_or(anyhow::anyhow!("atleast one server entry"))?;
     let version_definition = version_table
         .into_iter()
@@ -198,7 +200,7 @@ async fn install_manifest_command(args: ManifestArgs) -> anyhow::Result<()> {
 
     tracing::debug!("latest version: {}", &version_definition.version_name);
     let selected_cdn = format!("{}/{}", selected_server, cdn_definition.path);
-    tracing::debug!("selected cdn: {selected_cdn}");
+    tracing::trace!("selected cdn: {selected_cdn}");
 
     let build_config_hash = version_definition.build_config;
     let build_config = download_config(&selected_cdn, &build_config_hash).await?;
@@ -239,7 +241,9 @@ async fn download_command(args: DownloadArgs) -> anyhow::Result<()> {
         .ok_or(anyhow::anyhow!("atleast one cdn entry"))?;
     let selected_server = cdn_definition
         .servers
-        .first()
+        .into_iter()
+        .filter(|server| server.contains(".cdn"))
+        .next()
         .ok_or(anyhow::anyhow!("atleast one server entry"))?;
     let version_definition = version_table
         .into_iter()
