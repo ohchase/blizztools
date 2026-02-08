@@ -50,6 +50,8 @@ enum Product {
     WowClassicEraBeta,
     /// World of Warcraft Classic (Vanilla) Test
     WowClassicEraPtr,
+    /// World of Warcraft Anniversary
+    WowAnniversary,
 }
 
 impl Product {
@@ -65,6 +67,7 @@ impl Product {
             Product::WowClassicEra => "wow_classic_era",
             Product::WowClassicEraBeta => "wow_classic_era_beta",
             Product::WowClassicEraPtr => "wow_classic_era_ptr",
+            Product::WowAnniversary => "wow_anniversary",
             Product::Diablo3 => "d3",
             Product::Diablo3Ptr => "d3t",
             Product::Diablo4 => "fenris",
